@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Cloud Monitoring Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>🚀 AI-Based Cloud Monitoring System</h1>
+
+    <div class="status-box normal-active" id="statusBox">
+        🟢 System Normal
+    </div>
+
+    <div class="button-panel">
+        <button onclick="triggerLoad()">Generate CPU Load</button>
+        <button onclick="checkHealth()">Check Health</button>
+        <button onclick="viewLogs()">View Logs</button>
+    </div>
+
+    <div class="charts">
+        <div class="chart-card">
+            <h3>CPU Usage (%)</h3>
+            <canvas id="cpuChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h3>Memory Usage (%)</h3>
+            <canvas id="memoryChart"></canvas>
+        </div>
+    </div>
+
+    <div class="output" id="output">
+        System ready...
+    </div>
+
+</div>
+
+<script>
+
+let cpuData = [];
+let memoryData = [];
+let labels = [];
+
+const cpuChart = new Chart(document.getElementById('cpuChart'), {
+    type: 'line',
+    data: { labels: labels, datasets: [{ label: 'CPU', data: cpuData, borderColor: '#00ff00', tension: 0.3 }] },
+    options: { scales: { y: { min: 0, max: 100 } } }
+});
+
+const memoryChart = new Chart(document.getElementById('memoryChart'), {
+    type: 'line',
+    data: { labels: labels, datasets: [{ label: 'Memory', data: memoryData, borderColor: '#00bfff', tension: 0.3 }] },
+    options: { scales: { y: { min: 0, max: 100 } } }
+});
+
+async function fetchMetrics() {
+    let res = await fetch('/metrics');
+    let data = await res.json();
+
+    if (cpuData.length > 25) {
+        cpuData.shift();
+        memoryData.shift();
+        labels.shift();
+    }
+
+    cpuData.push(data.cpu);
+    memoryData.push(data.memory);
+    labels.push(new Date().toLocaleTimeString());
+
+    let box = document.getElementById("statusBox");
+
+    if (data.anomaly) {
+        box.innerText = "🔴 AI Detected Anomaly!";
+        box.classList.add("anomaly-active");
+        box.classList.remove("normal-active");
+    } else {
+        box.innerText = "🟢 System Normal";
+        box.classList.remove("anomaly-active");
+        box.classList.add("normal-active");
+    }
+
+    cpuChart.update();
+    memoryChart.update();
+}
+
+setInterval(fetchMetrics, 2000);
+
+async function triggerLoad() {
+    let res = await fetch('/load');
+    let data = await res.json();
+    document.getElementById('output').innerText = data.message;
+}
+
+async function checkHealth() {
+    let res = await fetch('/health');
+    let data = await res.json();
+    document.getElementById('output').innerText = "Health: " + data.status;
+}
+
+async function viewLogs() {
+    let res = await fetch('/logs');
+    let data = await res.json();
+    document.getElementById('output').innerText = data.logs.join("");
+}
+
+</script>
+
+</body>
+</html>

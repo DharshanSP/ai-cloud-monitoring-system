@@ -1,0 +1,4 @@
+flask
+psutil
+scikit-learn
+pymongo
