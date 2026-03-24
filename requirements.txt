@@ -1,4 +1,6 @@
 flask
 psutil
 scikit-learn
-pymongo
+numpy
+requests 
+google-genai
