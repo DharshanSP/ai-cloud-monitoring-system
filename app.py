@@ -1,17 +1,19 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 import time
 import logging
 import os
 import psutil
 import numpy as np
 from sklearn.ensemble import IsolationForest
-import smtplib
-from email.mime.text import MIMEText
+import requests
+
+# ✅ Gemini NEW SDK
+from google import genai
 
 app = Flask(__name__)
 
 # ===============================
-# Logging Setup
+# 🔹 Logging Setup
 # ===============================
 if not os.path.exists('logs'):
     os.makedirs('logs')
@@ -23,44 +25,81 @@ logging.basicConfig(
 )
 
 # ===============================
-# In-Memory Metrics Storage
+# 🔹 Gemini Setup
+# ===============================
+GEMINI_API_KEY = "AIzaSyD1beA-eC5qC34isQ6xdFH_LXySCChYaNw"
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+# ===============================
+# 🔹 Local AI Setup
 # ===============================
 metrics_history = []
-model = IsolationForest(contamination=0.05)
+model_local = IsolationForest(contamination=0.05)
 
 # ===============================
-# Email Configuration
+# 🔹 Resend API Setup
 # ===============================
-EMAIL_ADDRESS = "your_email@gmail.com"
-EMAIL_PASSWORD = "your_app_password"   # Use Gmail App Password
-ALERT_RECEIVER = "receiver_email@gmail.com"
+RESEND_API_KEY = "re_TuZwzy55_2RjUcGfk4Sgefv3sqmy4vp9a"
 
-def send_email_alert(cpu, memory):
+def send_email_alert(cpu, memory, reason):
     try:
-        msg = MIMEText(f"""
-⚠ AI ANOMALY DETECTED
+        print("Sending email via Resend...")
+
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": "onboarding@resend.dev",
+                "to": ["s.p.darshan0417@gmail.com"],  # 🔴 change this
+                "subject": "🚨 AI Monitoring Alert",
+                "html": f"""
+                <h2>⚠ AI Anomaly Detected</h2>
+                <p><b>CPU:</b> {cpu}%</p>
+                <p><b>Memory:</b> {memory}%</p>
+                <p><b>Reason:</b> {reason}</p>
+                """
+            }
+        )
+
+        print("Resend response:", response.status_code, response.text)
+
+    except Exception as e:
+        print("Resend ERROR:", e)
+
+# ===============================
+# 🔹 Gemini AI Function
+# ===============================
+def check_anomaly_with_gemini(cpu, memory):
+    try:
+        prompt = f"""
+You are an AI cloud monitoring system.
 
 CPU Usage: {cpu}%
 Memory Usage: {memory}%
 
-Check dashboard immediately.
-""")
+Is this abnormal? Answer YES or NO and give short reason.
+"""
 
-        msg['Subject'] = "AI Cloud Monitoring Alert"
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = ALERT_RECEIVER
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt
+        )
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
+        text = response.text.lower()
 
-        logging.warning("Email alert sent.")
+        if "yes" in text:
+            return True, text
+        return False, text
 
     except Exception as e:
-        logging.error(f"Email failed: {e}")
+        logging.error(f"Gemini error: {e}")
+        return False, "AI error"
 
 # ===============================
-# Routes
+# 🔹 Routes
 # ===============================
 
 @app.route("/")
@@ -73,7 +112,7 @@ def health():
 
 @app.route("/load")
 def load():
-    logging.warning("CPU load simulation triggered")
+    logging.warning("CPU load triggered")
     x = 0
     for i in range(10**7):
         x += i
@@ -81,31 +120,56 @@ def load():
 
 @app.route("/metrics")
 def metrics():
+    mode = request.args.get("mode", "local")
+
     cpu = psutil.cpu_percent(interval=1)
     memory = psutil.virtual_memory().percent
 
-    metrics_history.append([cpu, memory])
-
-    if len(metrics_history) > 100:
-        metrics_history.pop(0)
-
     anomaly_detected = False
+    reason = "System Normal"
 
-    if len(metrics_history) > 30:
-        data = np.array(metrics_history)
-        model.fit(data)
+    # ===============================
+    # LOCAL AI
+    # ===============================
+    if mode == "local":
+        metrics_history.append([cpu, memory])
 
-        prediction = model.predict([[cpu, memory]])
+        if len(metrics_history) > 100:
+            metrics_history.pop(0)
 
-        if prediction[0] == -1:
+        if len(metrics_history) > 30:
+            data = np.array(metrics_history)
+            model_local.fit(data)
+
+            prediction = model_local.predict([[cpu, memory]])
+
+            if prediction[0] == -1:
+                anomaly_detected = True
+                reason = "Local AI detected unusual pattern"
+
+    # ===============================
+    # GEMINI AI
+    # ===============================
+    else:
+        if cpu > 85:
             anomaly_detected = True
-            logging.warning("AI detected anomaly")
-            send_email_alert(cpu, memory)
+            reason = "Critical CPU spike detected"
+        elif cpu > 60:
+            anomaly_detected, reason = check_anomaly_with_gemini(cpu, memory)
+
+    # ===============================
+    # ALERT
+    # ===============================
+    if anomaly_detected:
+        send_email_alert(cpu, memory, reason)
+        logging.warning(f"Anomaly detected: {reason}")
 
     return jsonify({
         "cpu": cpu,
         "memory": memory,
-        "anomaly": anomaly_detected
+        "anomaly": anomaly_detected,
+        "reason": reason,
+        "mode": mode
     })
 
 @app.route("/logs")
@@ -117,5 +181,8 @@ def get_logs():
     except:
         return jsonify({"logs": []})
 
+# ===============================
+# 🔹 Run App
+# ===============================
 if __name__ == "__main__":
     app.run(debug=True)

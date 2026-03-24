@@ -81,3 +81,35 @@ button:hover {
     padding: 20px;
     width: 500px;
 }
+/* MODE TOGGLE */
+.mode-container {
+    margin-bottom: 20px;
+}
+
+.mode-badge {
+    margin-left: 15px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.mode-badge.local {
+    background: #00ff88;
+    color: black;
+}
+
+.mode-badge.gemini {
+    background: #ff9800;
+    color: black;
+}
+
+/* AI BOX */
+.ai-box {
+    margin-top: 25px;
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px solid #00ff88;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(10px);
+    font-size: 15px;
+}

@@ -11,17 +11,32 @@
 
     <h1>🚀 AI-Based Cloud Monitoring System</h1>
 
+    <!-- AI MODE TOGGLE -->
+    <div class="mode-container">
+        <label>AI Mode:</label>
+        <select id="aiMode" onchange="updateModeIndicator()">
+            <option value="local">Local AI</option>
+            <option value="gemini">Gemini AI</option>
+        </select>
+
+        <span id="modeIndicator" class="mode-badge local">LOCAL</span>
+    </div>
+
+    <!-- STATUS BOX -->
     <div class="status-box normal-active" id="statusBox">
         🟢 System Normal
     </div>
 
+    <!-- BUTTON PANEL -->
     <div class="button-panel">
-        <button onclick="triggerLoad()">Generate CPU Load</button>
-        <button onclick="checkHealth()">Check Health</button>
-        <button onclick="viewLogs()">View Logs</button>
+        <button onclick="triggerLoad()">⚡ Generate Load</button>
+        <button onclick="checkHealth()">💚 Health</button>
+        <button onclick="viewLogs()">📜 Logs</button>
     </div>
 
+    <!-- CHARTS -->
     <div class="charts">
+
         <div class="chart-card">
             <h3>CPU Usage (%)</h3>
             <canvas id="cpuChart"></canvas>
@@ -31,8 +46,15 @@
             <h3>Memory Usage (%)</h3>
             <canvas id="memoryChart"></canvas>
         </div>
+
     </div>
 
+    <!-- AI EXPLANATION -->
+    <div class="ai-box" id="aiBox">
+        🤖 AI Analysis: Waiting for data...
+    </div>
+
+    <!-- OUTPUT -->
     <div class="output" id="output">
         System ready...
     </div>
@@ -41,24 +63,71 @@
 
 <script>
 
+// ===============================
+// MODE INDICATOR
+// ===============================
+function updateModeIndicator() {
+    let mode = document.getElementById("aiMode").value;
+    let badge = document.getElementById("modeIndicator");
+
+    if (mode === "local") {
+        badge.innerText = "LOCAL";
+        badge.className = "mode-badge local";
+    } else {
+        badge.innerText = "GEMINI";
+        badge.className = "mode-badge gemini";
+    }
+}
+
+// ===============================
+// DATA STORAGE
+// ===============================
 let cpuData = [];
 let memoryData = [];
 let labels = [];
 
+// ===============================
+// CHARTS
+// ===============================
 const cpuChart = new Chart(document.getElementById('cpuChart'), {
     type: 'line',
-    data: { labels: labels, datasets: [{ label: 'CPU', data: cpuData, borderColor: '#00ff00', tension: 0.3 }] },
-    options: { scales: { y: { min: 0, max: 100 } } }
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'CPU',
+            data: cpuData,
+            borderColor: '#00ff88',
+            tension: 0.4
+        }]
+    },
+    options: {
+        scales: { y: { min: 0, max: 100 } }
+    }
 });
 
 const memoryChart = new Chart(document.getElementById('memoryChart'), {
     type: 'line',
-    data: { labels: labels, datasets: [{ label: 'Memory', data: memoryData, borderColor: '#00bfff', tension: 0.3 }] },
-    options: { scales: { y: { min: 0, max: 100 } } }
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Memory',
+            data: memoryData,
+            borderColor: '#00bfff',
+            tension: 0.4
+        }]
+    },
+    options: {
+        scales: { y: { min: 0, max: 100 } }
+    }
 });
 
+// ===============================
+// FETCH METRICS
+// ===============================
 async function fetchMetrics() {
-    let res = await fetch('/metrics');
+    let mode = document.getElementById("aiMode").value;
+
+    let res = await fetch('/metrics?mode=' + mode);
     let data = await res.json();
 
     if (cpuData.length > 25) {
@@ -71,16 +140,23 @@ async function fetchMetrics() {
     memoryData.push(data.memory);
     labels.push(new Date().toLocaleTimeString());
 
-    let box = document.getElementById("statusBox");
+    let statusBox = document.getElementById("statusBox");
+    let aiBox = document.getElementById("aiBox");
 
     if (data.anomaly) {
-        box.innerText = "🔴 AI Detected Anomaly!";
-        box.classList.add("anomaly-active");
-        box.classList.remove("normal-active");
+        statusBox.innerText = "🔴 AI Detected Anomaly!";
+        statusBox.classList.add("anomaly-active");
+        statusBox.classList.remove("normal-active");
+
+        aiBox.innerText = "🤖 " + data.reason;
+        aiBox.style.borderColor = "red";
     } else {
-        box.innerText = "🟢 System Normal";
-        box.classList.remove("anomaly-active");
-        box.classList.add("normal-active");
+        statusBox.innerText = "🟢 System Normal";
+        statusBox.classList.remove("anomaly-active");
+        statusBox.classList.add("normal-active");
+
+        aiBox.innerText = "🤖 System operating normally";
+        aiBox.style.borderColor = "#00ff88";
     }
 
     cpuChart.update();
@@ -89,6 +165,9 @@ async function fetchMetrics() {
 
 setInterval(fetchMetrics, 2000);
 
+// ===============================
+// BUTTON FUNCTIONS
+// ===============================
 async function triggerLoad() {
     let res = await fetch('/load');
     let data = await res.json();
@@ -106,6 +185,9 @@ async function viewLogs() {
     let data = await res.json();
     document.getElementById('output').innerText = data.logs.join("");
 }
+
+// Initialize mode indicator
+updateModeIndicator();
 
 </script>
 
