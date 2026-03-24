@@ -137,11 +137,22 @@ This project demonstrates how AI can enhance traditional monitoring systems by a
 
 ---
 ## 📌 Guide
+
 Mayank Kumar
+
+-- 
 ## 👨‍💻 Team Members
+
 Dharshan S p
+
+--
 Gautam 
+
+--
+
 abhishek
+
+--
 abhiram
 
 ---
