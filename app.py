@@ -27,7 +27,7 @@ logging.basicConfig(
 # ===============================
 # 🔹 Gemini Setup
 # ===============================
-GEMINI_API_KEY = "AIzaSyD1beA-eC5qC34isQ6xdFH_LXySCChYaNw"
+GEMINI_API_KEY = " "
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ===============================
@@ -39,7 +39,7 @@ model_local = IsolationForest(contamination=0.05)
 # ===============================
 # 🔹 Resend API Setup
 # ===============================
-RESEND_API_KEY = "re_TuZwzy55_2RjUcGfk4Sgefv3sqmy4vp9a"
+RESEND_API_KEY = " "
 
 def send_email_alert(cpu, memory, reason):
     try:
