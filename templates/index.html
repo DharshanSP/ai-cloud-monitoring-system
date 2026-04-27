@@ -1,194 +1,306 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AI Cloud Monitoring Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Cloud Sentinel V2</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <div class="container">
+    <header>
+        <h1>AI CLOUD SENTINEL <span style="font-size: 0.8rem; opacity: 0.6; vertical-align: middle;">V2.0</span></h1>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <select id="aiMode" onchange="updateMode()" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 5px 10px; border-radius: 8px;">
+                <option value="local">Hybrid Local AI</option>
+                <option value="gemini">Gemini 1.5 Pro</option>
+            </select>
+            <div id="connectionStatus" class="status-indicator">
+                <div class="status-dot active"></div>
+                <span style="font-size: 0.8rem; font-weight: 600;">LIVE</span>
+            </div>
+        </div>
+    </header>
 
-    <h1>🚀 AI-Based Cloud Monitoring System</h1>
-
-    <!-- AI MODE TOGGLE -->
-    <div class="mode-container">
-        <label>AI Mode:</label>
-        <select id="aiMode" onchange="updateModeIndicator()">
-            <option value="local">Local AI</option>
-            <option value="gemini">Gemini AI</option>
-        </select>
-
-        <span id="modeIndicator" class="mode-badge local">LOCAL</span>
+    <!-- HIGH DENSITY STATUS GRID -->
+    <div class="status-grid">
+        <div class="glass-card">
+            <div class="status-label">CPU Load</div>
+            <div class="status-value"><span id="val-cpu">0</span><small>%</small></div>
+            <div id="stat-cpu" class="status-dot active"></div>
+        </div>
+        <div class="glass-card">
+            <div class="status-label">Memory</div>
+            <div class="status-value"><span id="val-mem">0</span><small>%</small></div>
+            <div id="stat-mem" class="status-dot active"></div>
+        </div>
+        <div class="glass-card">
+            <div class="status-label">Disk I/O</div>
+            <div class="status-value"><span id="val-disk">0</span><small> MB/s</small></div>
+            <div id="stat-disk" class="status-dot active"></div>
+        </div>
+        <div class="glass-card">
+            <div class="status-label">Network</div>
+            <div class="status-value"><span id="val-net">0</span><small> MB/s</small></div>
+            <div id="stat-net" class="status-dot active"></div>
+        </div>
+        <div class="glass-card">
+            <div class="status-label">Processes</div>
+            <div class="status-value"><span id="val-procs">0</span></div>
+            <div id="stat-procs" class="status-dot active"></div>
+        </div>
+        <div class="glass-card">
+            <div class="status-label">App Latency</div>
+            <div class="status-value"><span id="val-lat">0</span><small>ms</small></div>
+            <div id="stat-lat" class="status-dot active"></div>
+        </div>
     </div>
 
-    <!-- STATUS BOX -->
-    <div class="status-box normal-active" id="statusBox">
-        🟢 System Normal
-    </div>
-
-    <!-- BUTTON PANEL -->
-    <div class="button-panel">
-        <button onclick="triggerLoad()">⚡ Generate Load</button>
-        <button onclick="checkHealth()">💚 Health</button>
-        <button onclick="viewLogs()">📜 Logs</button>
-    </div>
-
-    <!-- CHARTS -->
-    <div class="charts">
-
-        <div class="chart-card">
-            <h3>CPU Usage (%)</h3>
-            <canvas id="cpuChart"></canvas>
+    <div class="dashboard-layout">
+        <!-- MAIN CHARTS -->
+        <div class="charts-grid">
+            <div class="glass-card chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">CPU SPAN</span>
+                    <span class="chart-current" id="cur-cpu">0%</span>
+                </div>
+                <canvas id="chart-cpu"></canvas>
+            </div>
+            <div class="glass-card chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">MEMORY LEAK METER</span>
+                    <span class="chart-current" id="cur-mem">0%</span>
+                </div>
+                <canvas id="chart-mem"></canvas>
+            </div>
+            <div class="glass-card chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">DISK THROUGHPUT</span>
+                    <span class="chart-current" id="cur-disk">0 MB/s</span>
+                </div>
+                <canvas id="chart-disk"></canvas>
+            </div>
+            <div class="glass-card chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">NET TRAFFIC</span>
+                    <span class="chart-current" id="cur-net">0 MB/s</span>
+                </div>
+                <canvas id="chart-net"></canvas>
+            </div>
+            <div class="glass-card chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">PROCESS BLOAT</span>
+                    <span class="chart-current" id="cur-procs">0</span>
+                </div>
+                <canvas id="chart-procs"></canvas>
+            </div>
+            <div class="glass-card chart-card">
+                <div class="chart-header">
+                    <span class="chart-title">APP RESPONSIVENESS</span>
+                    <span class="chart-current" id="cur-lat">0ms</span>
+                </div>
+                <canvas id="chart-lat"></canvas>
+            </div>
         </div>
 
-        <div class="chart-card">
-            <h3>Memory Usage (%)</h3>
-            <canvas id="memoryChart"></canvas>
+        <!-- SIDE PANEL -->
+        <div class="side-panel">
+            <div class="glass-card anomalies-card">
+                <h3 style="display: flex; justify-content: space-between;">
+                    <span>Intelligence Log</span>
+                    <span id="ai-status" style="font-size: 0.7rem; color: var(--success);">ACTIVE</span>
+                </h3>
+                <div id="aiReason" style="font-size: 0.85rem; margin-top: 10px; min-height: 40px; color: var(--text-secondary);">
+                    Watching for patterns...
+                </div>
+            </div>
+
+            <div class="glass-card anomaly-log">
+                <h3>Event Timeline</h3>
+                <div class="log-content" id="logContent"></div>
+            </div>
+
+            <div class="glass-card controls-card">
+                <h3>Drill Simulation</h3>
+                <div class="btn-grid">
+                    <button onclick="simulate('cpu')">CPU Spike</button>
+                    <button onclick="simulate('mem')">Mem Leak</button>
+                    <button onclick="simulate('proc')">Fork Bomb</button>
+                    <button class="primary" onclick="checkHealth()">Full Scan</button>
+                </div>
+            </div>
         </div>
-
     </div>
-
-    <!-- AI EXPLANATION -->
-    <div class="ai-box" id="aiBox">
-        🤖 AI Analysis: Waiting for data...
-    </div>
-
-    <!-- OUTPUT -->
-    <div class="output" id="output">
-        System ready...
-    </div>
-
 </div>
 
 <script>
-
-// ===============================
-// MODE INDICATOR
-// ===============================
-function updateModeIndicator() {
-    let mode = document.getElementById("aiMode").value;
-    let badge = document.getElementById("modeIndicator");
-
-    if (mode === "local") {
-        badge.innerText = "LOCAL";
-        badge.className = "mode-badge local";
-    } else {
-        badge.innerText = "GEMINI";
-        badge.className = "mode-badge gemini";
-    }
-}
-
-// ===============================
-// DATA STORAGE
-// ===============================
-let cpuData = [];
-let memoryData = [];
+const MAX_POINTS = 40;
 let labels = [];
+let dataStore = { cpu: [], memory: [], disk: [], net: [], procs: [], latency: [] };
+let charts = {};
 
-// ===============================
-// CHARTS
-// ===============================
-const cpuChart = new Chart(document.getElementById('cpuChart'), {
-    type: 'line',
-    data: {
-        labels: labels,
-        datasets: [{
-            label: 'CPU',
-            data: cpuData,
-            borderColor: '#00ff88',
-            tension: 0.4
-        }]
-    },
-    options: {
-        scales: { y: { min: 0, max: 100 } }
-    }
-});
+function initCharts() {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    const textColor = isDark ? '#777' : '#999';
 
-const memoryChart = new Chart(document.getElementById('memoryChart'), {
-    type: 'line',
-    data: {
-        labels: labels,
-        datasets: [{
-            label: 'Memory',
-            data: memoryData,
-            borderColor: '#00bfff',
-            tension: 0.4
-        }]
-    },
-    options: {
-        scales: { y: { min: 0, max: 100 } }
-    }
-});
+    const config = (label, color) => ({
+        type: 'line',
+        data: { labels: labels, datasets: [{ label, data: [], borderColor: color, backgroundColor: color+'22', fill: true, tension: 0.4, pointRadius: 0 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 9 } } },
+                x: { display: false }
+            }
+        }
+    });
 
-// ===============================
-// FETCH METRICS
-// ===============================
-async function fetchMetrics() {
-    let mode = document.getElementById("aiMode").value;
-
-    let res = await fetch('/metrics?mode=' + mode);
-    let data = await res.json();
-
-    if (cpuData.length > 25) {
-        cpuData.shift();
-        memoryData.shift();
-        labels.shift();
-    }
-
-    cpuData.push(data.cpu);
-    memoryData.push(data.memory);
-    labels.push(new Date().toLocaleTimeString());
-
-    let statusBox = document.getElementById("statusBox");
-    let aiBox = document.getElementById("aiBox");
-
-    if (data.anomaly) {
-        statusBox.innerText = "🔴 AI Detected Anomaly!";
-        statusBox.classList.add("anomaly-active");
-        statusBox.classList.remove("normal-active");
-
-        aiBox.innerText = "🤖 " + data.reason;
-        aiBox.style.borderColor = "red";
-    } else {
-        statusBox.innerText = "🟢 System Normal";
-        statusBox.classList.remove("anomaly-active");
-        statusBox.classList.add("normal-active");
-
-        aiBox.innerText = "🤖 System operating normally";
-        aiBox.style.borderColor = "#00ff88";
-    }
-
-    cpuChart.update();
-    memoryChart.update();
+    charts.cpu = new Chart(document.getElementById('chart-cpu'), config('CPU', '#00f2fe'));
+    charts.memory = new Chart(document.getElementById('chart-mem'), config('Mem', '#4facfe'));
+    charts.disk = new Chart(document.getElementById('chart-disk'), config('Disk', '#a8ff78'));
+    charts.net = new Chart(document.getElementById('chart-net'), config('Net', '#fdbb2d'));
+    charts.procs = new Chart(document.getElementById('chart-procs'), config('Proc', '#ff00cc'));
+    charts.latency = new Chart(document.getElementById('chart-lat'), config('Lat', '#fff'));
 }
 
-setInterval(fetchMetrics, 2000);
+async function fetchMetrics() {
+    const mode = document.getElementById("aiMode").value;
+    try {
+        const res = await fetch(`/metrics?mode=${mode}`);
+        const data = await res.json();
+        updateUI(data);
+    } catch (e) { console.error(e); }
+}
 
-// ===============================
-// BUTTON FUNCTIONS
-// ===============================
-async function triggerLoad() {
-    let res = await fetch('/load');
-    let data = await res.json();
-    document.getElementById('output').innerText = data.message;
+function updateUI(data) {
+    const time = new Date().toLocaleTimeString();
+    if (labels.length > MAX_POINTS) {
+        labels.shift();
+        Object.keys(dataStore).forEach(k => dataStore[k].shift());
+    }
+
+    labels.push(time);
+    dataStore.cpu.push(data.cpu);
+    dataStore.memory.push(data.memory);
+    dataStore.disk.push(data.disk);
+    dataStore.net.push(data.net);
+    dataStore.procs.push(data.procs);
+    dataStore.latency.push(data.latency);
+
+    // Update Text
+    document.getElementById('val-cpu').innerText = data.cpu;
+    document.getElementById('val-mem').innerText = data.memory;
+    document.getElementById('val-disk').innerText = data.disk;
+    document.getElementById('val-net').innerText = data.net;
+    document.getElementById('val-procs').innerText = data.procs;
+    document.getElementById('val-lat').innerText = data.latency;
+
+    document.getElementById('cur-cpu').innerText = data.cpu + '%';
+    document.getElementById('cur-mem').innerText = data.memory + '%';
+    document.getElementById('cur-disk').innerText = data.disk + ' MB/s';
+    document.getElementById('cur-net').innerText = data.net + ' MB/s';
+    document.getElementById('cur-procs').innerText = data.procs;
+    document.getElementById('cur-lat').innerText = data.latency + 'ms';
+
+    // Update Charts
+    Object.keys(charts).forEach(key => {
+        charts[key].data.datasets[0].data = dataStore[key === 'memory' ? 'memory' : key];
+        charts[key].update('none');
+    });
+
+    // Anomaly Handling
+    const reasonEl = document.getElementById("aiReason");
+    if (data.anomaly) {
+        reasonEl.innerText = data.reason;
+        reasonEl.style.color = "var(--error)";
+        addLog(data.reason, "alert");
+        triggerVisualAlert(data.reason);
+    } else {
+        reasonEl.innerText = "System Normal";
+        reasonEl.style.color = "var(--text-secondary)";
+        clearVisualAlert();
+    }
+}
+
+function addLog(msg, type="") {
+    const log = document.getElementById("logContent");
+    const item = document.createElement("div");
+    item.className = `log-item ${type}`;
+    item.innerHTML = `<span style="opacity:0.5">${new Date().toLocaleTimeString()}</span> ${escapeHtml(msg)}`;
+    log.prepend(item);
+    if (log.children.length > 20) log.lastChild.remove();
+}
+
+function escapeHtml(input) {
+    return String(input)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+async function loadAnomalyHistory() {
+    try {
+        const res = await fetch('/anomalies?limit=20');
+        const payload = await res.json();
+
+        if (payload.storage !== "mongodb" || !payload.anomalies || payload.anomalies.length === 0) {
+            return;
+        }
+
+        const log = document.getElementById("logContent");
+        log.innerHTML = "";
+
+        payload.anomalies.forEach((item) => {
+            const timestamp = new Date(item.timestamp).toLocaleTimeString();
+            const reason = item.reason || "Unknown anomaly";
+            const div = document.createElement("div");
+            div.className = "log-item alert";
+            div.innerHTML = `<span style="opacity:0.5">${timestamp}</span> ${escapeHtml(reason)}`;
+            log.appendChild(div);
+        });
+    } catch (err) {
+        console.error("Failed to load anomaly history", err);
+    }
+}
+
+function triggerVisualAlert(reason) {
+    const statusDots = document.querySelectorAll(".status-dot");
+    statusDots.forEach(d => { if(d.id !== 'connectionStatus') d.className = "status-dot error"; });
+}
+
+function clearVisualAlert() {
+    const statusDots = document.querySelectorAll(".status-dot");
+    statusDots.forEach(d => { d.className = "status-dot active"; });
+}
+
+async function simulate(type) {
+    addLog(`Simulating ${type.toUpperCase()} stress...`);
+    await fetch(`/load?type=${type}`);
 }
 
 async function checkHealth() {
-    let res = await fetch('/health');
-    let data = await res.json();
-    document.getElementById('output').innerText = "Health: " + data.status;
+    const res = await fetch('/health');
+    const data = await res.json();
+    addLog(`System Scan: ${data.status} (${data.baseline_entries} baseline points)`);
 }
 
-async function viewLogs() {
-    let res = await fetch('/logs');
-    let data = await res.json();
-    document.getElementById('output').innerText = data.logs.join("");
+function updateMode() {
+    const mode = document.getElementById("aiMode").value;
+    addLog(`Intelligence switched to ${mode.toUpperCase()} mode.`);
 }
 
-// Initialize mode indicator
-updateModeIndicator();
-
+initCharts();
+loadAnomalyHistory();
+setInterval(fetchMetrics, 2000);
+setInterval(loadAnomalyHistory, 10000);
+addLog("Centinel Monitoring Hub started.");
 </script>
 
 </body>
