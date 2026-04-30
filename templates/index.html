@@ -3,10 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Cloud Sentinel V2</title>
+    <title>AI Cloud Sentinel V2 - Multi-Server</title>
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Modal Styles */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 12px;
+            padding: 25px; width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); color: var(--text-primary);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-header h3 { margin: 0; }
+        .close { color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; font-weight: bold; }
+        .close:hover { color: var(--text-primary); }
+        .code-box { background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 0.85rem; word-break: break-all; margin-top: 10px;}
+        .copy-btn { margin-top: 10px; padding: 8px 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
+        .copy-btn:hover { opacity: 0.9; }
+    </style>
 </head>
 <body>
 
@@ -14,9 +33,14 @@
     <header>
         <h1>AI CLOUD SENTINEL <span style="font-size: 0.8rem; opacity: 0.6; vertical-align: middle;">V2.0</span></h1>
         <div style="display: flex; gap: 15px; align-items: center;">
+            <button onclick="document.getElementById('addServerModal').style.display='flex'" style="background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.8rem;">+ Add Server</button>
+            <button id="toggleMonitorBtn" onclick="toggleMonitoring()" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.8rem;">⏸ Pause</button>
+            <select id="deviceSelect" onchange="switchDevice()" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 5px 10px; border-radius: 8px; font-weight: bold;">
+                <option value="local-server">local-server</option>
+            </select>
             <select id="aiMode" onchange="updateMode()" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid var(--glass-border); padding: 5px 10px; border-radius: 8px;">
-                <option value="local">Hybrid Local AI</option>
                 <option value="gemini">Gemini 1.5 Pro</option>
+                <option value="local">Hybrid Local AI</option>
             </select>
             <div id="connectionStatus" class="status-indicator">
                 <div class="status-dot active"></div>
@@ -108,13 +132,18 @@
 
         <!-- SIDE PANEL -->
         <div class="side-panel">
-            <div class="glass-card anomalies-card">
+            <div class="glass-card anomalies-card anomaly-insight">
                 <h3 style="display: flex; justify-content: space-between;">
-                    <span>Intelligence Log</span>
+                    <span>Anomaly Insight Panel</span>
                     <span id="ai-status" style="font-size: 0.7rem; color: var(--success);">ACTIVE</span>
                 </h3>
                 <div id="aiReason" style="font-size: 0.85rem; margin-top: 10px; min-height: 40px; color: var(--text-secondary);">
                     Watching for patterns...
+                </div>
+                <div id="insight-details" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border); font-size: 0.85rem;">
+                    <p style="margin-bottom: 8px;"><b>⚠ Root Cause:</b> <span id="insight-cause" style="color: var(--text-secondary);"></span></p>
+                    <p style="margin-bottom: 8px;"><b>🔧 Fix:</b> <span id="insight-fix" style="color: var(--text-secondary);"></span></p>
+                    <p><b>🛡 Prevention:</b> <span id="insight-prev" style="color: var(--text-secondary);"></span></p>
                 </div>
             </div>
 
@@ -123,8 +152,21 @@
                 <div class="log-content" id="logContent"></div>
             </div>
 
+            <div class="glass-card prediction-card">
+                <h3>AI Predictive Risk</h3>
+                <div id="predictInfo" style="margin-top: 10px;">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">FORECAST STATUS:</div>
+                    <div id="predictStatus" style="font-size: 1.1rem; font-weight: 800; margin-top: 4px; color: var(--success);">Calculating...</div>
+                    <div id="predictRisk" class="status-dot active" style="margin-top: 8px; display: inline-block;"></div>
+                    <span id="predictRiskText" style="font-size: 0.8rem; font-weight: 700;">LOW RISK</span>
+                </div>
+                <div style="margin-top: 15px; height: 100px;">
+                    <canvas id="chart-predict"></canvas>
+                </div>
+            </div>
+
             <div class="glass-card controls-card">
-                <h3>Drill Simulation</h3>
+                <h3>Test Mode (<span id="sim-target">local-server</span>)</h3>
                 <div class="btn-grid">
                     <button onclick="simulate('cpu')">CPU Spike</button>
                     <button onclick="simulate('mem')">Mem Leak</button>
@@ -132,15 +174,68 @@
                     <button class="primary" onclick="checkHealth()">Full Scan</button>
                 </div>
             </div>
+
+            <div class="glass-card controls-card" style="margin-top: 15px;">
+                <h3>System Tools</h3>
+                <button class="primary" style="width: 100%; padding: 10px; margin-top: 10px; border-radius: 8px;" onclick="window.open('/task-manager', '_blank')">📋 Open Task Manager</button>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Add Server Modal -->
+<div id="addServerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Deploy Remote Agent</h3>
+            <span class="close" onclick="document.getElementById('addServerModal').style.display='none'">&times;</span>
+        </div>
+        <p style="font-size: 0.9rem; margin-bottom: 10px;">To monitor another server, run this command on the remote machine (Linux/Mac/Windows) to instantly download and start the monitoring agent.</p>
+        <div class="code-box" id="agentCmd">
+            curl -s http://<span id="server-ip">YOUR_IP</span>:5000/download-agent -o agent.py && python agent.py
+        </div>
+        <button class="copy-btn" onclick="copyCommand()">📋 Copy Command</button>
+        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 15px; text-align: center;">Requirements: Python 3.8+ and <code>pip install psutil requests</code></p>
+    </div>
+</div>
+
 <script>
+// Auto-populate IP for the modal based on current window location
+document.getElementById('server-ip').innerText = window.location.hostname;
+
 const MAX_POINTS = 40;
 let labels = [];
 let dataStore = { cpu: [], memory: [], disk: [], net: [], procs: [], latency: [] };
 let charts = {};
+let currentDevice = "local-server";
+let isMonitoring = true;
+
+function toggleMonitoring() {
+    isMonitoring = !isMonitoring;
+    const btn = document.getElementById("toggleMonitorBtn");
+    const statusText = document.querySelector("#connectionStatus span");
+    const statusDot = document.querySelector("#connectionStatus .status-dot");
+    
+    if (isMonitoring) {
+        btn.innerHTML = "⏸ Pause";
+        statusText.innerText = "LIVE";
+        statusDot.className = "status-dot active";
+        addLog("Monitoring resumed.", "info");
+    } else {
+        btn.innerHTML = "▶ Resume";
+        statusText.innerText = "PAUSED";
+        statusDot.className = "status-dot warning"; // turns yellow/orange
+        addLog("Monitoring paused.", "warning");
+    }
+}
+
+function copyCommand() {
+    const cmd = `curl -s http://${window.location.hostname}:5000/download-agent -o agent.py && python agent.py`;
+    navigator.clipboard.writeText(cmd);
+    const btn = document.querySelector('.copy-btn');
+    btn.innerText = "✅ Copied!";
+    setTimeout(() => btn.innerText = "📋 Copy Command", 2000);
+}
 
 function initCharts() {
     const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -166,18 +261,123 @@ function initCharts() {
     charts.net = new Chart(document.getElementById('chart-net'), config('Net', '#fdbb2d'));
     charts.procs = new Chart(document.getElementById('chart-procs'), config('Proc', '#ff00cc'));
     charts.latency = new Chart(document.getElementById('chart-lat'), config('Lat', '#fff'));
+
+    // Prediction Chart (Gauge-like or trend)
+    charts.predict = new Chart(document.getElementById('chart-predict'), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [100, 0],
+                backgroundColor: ['rgba(255,255,255,0.1)', 'var(--success)'],
+                borderWidth: 0,
+                circumference: 180,
+                rotation: 270,
+                cutout: '80%'
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+        }
+    });
+}
+
+async function fetchDevices() {
+    if (!isMonitoring) return;
+    try {
+        const res = await fetch('/devices');
+        const data = await res.json();
+        const select = document.getElementById("deviceSelect");
+        const existing = Array.from(select.options).map(opt => opt.value);
+        
+        data.devices.forEach(dev => {
+            if (!existing.includes(dev)) {
+                const opt = document.createElement("option");
+                opt.value = dev;
+                opt.innerText = dev;
+                select.appendChild(opt);
+                addLog(`New device connected: ${dev}`, "info");
+            }
+        });
+    } catch(e) {}
+}
+
+function switchDevice() {
+    currentDevice = document.getElementById("deviceSelect").value;
+    document.getElementById("sim-target").innerText = currentDevice;
+    
+    labels = [];
+    Object.keys(dataStore).forEach(k => dataStore[k] = []);
+    Object.keys(charts).forEach(k => {
+        charts[k].data.labels = labels;
+        charts[k].data.datasets[0].data = dataStore[k];
+        charts[k].update('none');
+    });
+    
+    addLog(`Switched view to ${currentDevice}`, "info");
 }
 
 async function fetchMetrics() {
-    const mode = document.getElementById("aiMode").value;
+    if (!isMonitoring) return;
     try {
-        const res = await fetch(`/metrics?mode=${mode}`);
+        const res = await fetch(`/device/${currentDevice}/metrics`);
+        if (!res.ok) throw new Error("No data");
         const data = await res.json();
         updateUI(data);
-    } catch (e) { console.error(e); }
+        fetchPrediction(); // Also update prediction
+    } catch (e) { 
+        document.getElementById('connectionStatus').querySelector('.status-dot').className = "status-dot error";
+    }
+}
+
+async function fetchPrediction() {
+    try {
+        const res = await fetch(`/predict/${currentDevice}`);
+        const data = await res.json();
+        
+        const statusEl = document.getElementById("predictStatus");
+        const riskEl = document.getElementById("predictRisk");
+        const riskTextEl = document.getElementById("predictRiskText");
+        
+        statusEl.innerText = data.prediction || "System Stable";
+        
+        if (data.risk_level === "High") {
+            statusEl.style.color = "var(--error)";
+            riskEl.className = "status-dot error";
+            riskTextEl.innerText = "CRITICAL RISK";
+            charts.predict.data.datasets[0].backgroundColor[1] = "var(--error)";
+            charts.predict.data.datasets[0].data = [20, 80];
+        } else if (data.risk_level === "Medium") {
+            statusEl.style.color = "var(--warning)";
+            riskEl.className = "status-dot warning";
+            riskTextEl.innerText = "MEDIUM RISK";
+            charts.predict.data.datasets[0].backgroundColor[1] = "var(--warning)";
+            charts.predict.data.datasets[0].data = [50, 50];
+        } else {
+            statusEl.style.color = "var(--success)";
+            riskEl.className = "status-dot active";
+            riskTextEl.innerText = "LOW RISK";
+            charts.predict.data.datasets[0].backgroundColor[1] = "var(--success)";
+            charts.predict.data.datasets[0].data = [90, 10];
+        }
+        charts.predict.update();
+    } catch(e) {}
+}
+
+function updateMetricCard(id, value, thresholdWarning, thresholdCritical) {
+    const dot = document.getElementById(`stat-${id}`);
+    if (value >= thresholdCritical) {
+        dot.className = "status-dot error";
+    } else if (value >= thresholdWarning) {
+        dot.className = "status-dot warning";
+    } else {
+        dot.className = "status-dot active";
+    }
 }
 
 function updateUI(data) {
+    document.getElementById('connectionStatus').querySelector('.status-dot').className = "status-dot active";
+    
     const time = new Date().toLocaleTimeString();
     if (labels.length > MAX_POINTS) {
         labels.shift();
@@ -188,42 +388,56 @@ function updateUI(data) {
     dataStore.cpu.push(data.cpu);
     dataStore.memory.push(data.memory);
     dataStore.disk.push(data.disk);
-    dataStore.net.push(data.net);
-    dataStore.procs.push(data.procs);
+    dataStore.net.push(data.network);
+    dataStore.procs.push(data.processes);
     dataStore.latency.push(data.latency);
 
-    // Update Text
     document.getElementById('val-cpu').innerText = data.cpu;
     document.getElementById('val-mem').innerText = data.memory;
     document.getElementById('val-disk').innerText = data.disk;
-    document.getElementById('val-net').innerText = data.net;
-    document.getElementById('val-procs').innerText = data.procs;
+    document.getElementById('val-net').innerText = data.network;
+    document.getElementById('val-procs').innerText = data.processes;
     document.getElementById('val-lat').innerText = data.latency;
 
     document.getElementById('cur-cpu').innerText = data.cpu + '%';
     document.getElementById('cur-mem').innerText = data.memory + '%';
     document.getElementById('cur-disk').innerText = data.disk + ' MB/s';
-    document.getElementById('cur-net').innerText = data.net + ' MB/s';
-    document.getElementById('cur-procs').innerText = data.procs;
+    document.getElementById('cur-net').innerText = data.network + ' MB/s';
+    document.getElementById('cur-procs').innerText = data.processes;
     document.getElementById('cur-lat').innerText = data.latency + 'ms';
-
-    // Update Charts
+    
+    updateMetricCard("cpu", data.cpu, 70, 85);
+    updateMetricCard("mem", data.memory, 75, 90);
+    updateMetricCard("procs", data.processes, 400, 600);
+    
     Object.keys(charts).forEach(key => {
         charts[key].data.datasets[0].data = dataStore[key === 'memory' ? 'memory' : key];
         charts[key].update('none');
     });
 
-    // Anomaly Handling
     const reasonEl = document.getElementById("aiReason");
-    if (data.anomaly) {
-        reasonEl.innerText = data.reason;
-        reasonEl.style.color = "var(--error)";
-        addLog(data.reason, "alert");
-        triggerVisualAlert(data.reason);
+    const detailsEl = document.getElementById("insight-details");
+    
+    if (data.anomaly && data.anomaly_data) {
+        const a = data.anomaly_data;
+        reasonEl.innerHTML = `<strong>[${a.severity.toUpperCase()}] ${a.type}</strong><br>${a.reason}`;
+        reasonEl.style.color = a.severity.toLowerCase() === 'critical' ? "var(--error)" : "var(--warning)";
+        
+        document.getElementById("insight-cause").innerText = a.root_cause;
+        document.getElementById("insight-fix").innerText = a.fix;
+        document.getElementById("insight-prev").innerText = a.prevention;
+        detailsEl.style.display = "block";
+        
+        addLog(`[${a.type}] ${a.reason}`, "alert");
+        const mainDot = document.getElementById("connectionStatus").querySelector(".status-dot");
+        mainDot.className = "status-dot error";
     } else {
-        reasonEl.innerText = "System Normal";
+        reasonEl.innerText = "System Normal. No anomalies detected.";
         reasonEl.style.color = "var(--text-secondary)";
-        clearVisualAlert();
+        detailsEl.style.display = "none";
+        
+        const mainDot = document.getElementById("connectionStatus").querySelector(".status-dot");
+        mainDot.className = "status-dot active";
     }
 }
 
@@ -231,64 +445,32 @@ function addLog(msg, type="") {
     const log = document.getElementById("logContent");
     const item = document.createElement("div");
     item.className = `log-item ${type}`;
-    item.innerHTML = `<span style="opacity:0.5">${new Date().toLocaleTimeString()}</span> ${escapeHtml(msg)}`;
+    
+    let icon = "🟢";
+    if (type === "alert") icon = "🔴";
+    
+    item.innerHTML = `<span style="opacity:0.5; font-size: 0.7rem; margin-right: 5px;">${new Date().toLocaleTimeString()}</span> ${icon} ${msg}`;
     log.prepend(item);
-    if (log.children.length > 20) log.lastChild.remove();
-}
-
-function escapeHtml(input) {
-    return String(input)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-}
-
-async function loadAnomalyHistory() {
-    try {
-        const res = await fetch('/anomalies?limit=20');
-        const payload = await res.json();
-
-        if (payload.storage !== "mongodb" || !payload.anomalies || payload.anomalies.length === 0) {
-            return;
-        }
-
-        const log = document.getElementById("logContent");
-        log.innerHTML = "";
-
-        payload.anomalies.forEach((item) => {
-            const timestamp = new Date(item.timestamp).toLocaleTimeString();
-            const reason = item.reason || "Unknown anomaly";
-            const div = document.createElement("div");
-            div.className = "log-item alert";
-            div.innerHTML = `<span style="opacity:0.5">${timestamp}</span> ${escapeHtml(reason)}`;
-            log.appendChild(div);
-        });
-    } catch (err) {
-        console.error("Failed to load anomaly history", err);
-    }
-}
-
-function triggerVisualAlert(reason) {
-    const statusDots = document.querySelectorAll(".status-dot");
-    statusDots.forEach(d => { if(d.id !== 'connectionStatus') d.className = "status-dot error"; });
-}
-
-function clearVisualAlert() {
-    const statusDots = document.querySelectorAll(".status-dot");
-    statusDots.forEach(d => { d.className = "status-dot active"; });
+    if (log.children.length > 50) log.lastChild.remove();
 }
 
 async function simulate(type) {
-    addLog(`Simulating ${type.toUpperCase()} stress...`);
+    if (currentDevice !== 'local-server') {
+        alert("Drill Simulation is currently only supported on the local server directly.");
+        return;
+    }
+    addLog(`Simulating ${type.toUpperCase()} stress...`, "info");
     await fetch(`/load?type=${type}`);
 }
 
 async function checkHealth() {
-    const res = await fetch('/health');
-    const data = await res.json();
-    addLog(`System Scan: ${data.status} (${data.baseline_entries} baseline points)`);
+    try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        addLog(`System Scan: DB=${data.db_connected ? 'OK' : 'FAIL'}, Nodes=${data.devices}`);
+    } catch(e) {
+        addLog(`System Scan Failed`, "alert");
+    }
 }
 
 function updateMode() {
@@ -297,10 +479,9 @@ function updateMode() {
 }
 
 initCharts();
-loadAnomalyHistory();
+setInterval(fetchDevices, 5000);
 setInterval(fetchMetrics, 2000);
-setInterval(loadAnomalyHistory, 10000);
-addLog("Centinel Monitoring Hub started.");
+addLog("Centinel Hub started. Local server tracking active.");
 </script>
 
 </body>

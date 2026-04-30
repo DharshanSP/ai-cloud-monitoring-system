@@ -104,6 +104,7 @@ h1 {
 }
 
 .status-dot.active { background: var(--success); box-shadow: 0 0 12px var(--success); }
+.status-dot.warning { background: var(--warning); box-shadow: 0 0 12px var(--warning); animation: pulse 2s infinite; }
 .status-dot.error { background: var(--error); box-shadow: 0 0 12px var(--error); animation: pulse 1s infinite; }
 
 .status-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
@@ -152,10 +153,16 @@ canvas { flex: 1; min-height: 0; }
 }
 
 .anomaly-log {
-    height: 400px;
+    height: 300px;
     display: flex;
     flex-direction: column;
 }
+
+.prediction-card {
+    border-left: 4px solid var(--accent-primary);
+}
+
+.prediction-card h3 { font-size: 0.9rem; margin-bottom: 10px; }
 
 .log-content {
     flex: 1;

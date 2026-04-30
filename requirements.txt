@@ -1,7 +1,8 @@
 flask
 psutil
-scikit-learn
 numpy
-requests 
+scikit-learn
+requests
 google-genai
 pymongo
+python-dotenv
